@@ -20,8 +20,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--epochs",
         type=int,
-        default=30,
-        help="Training epochs (30 reproduces task0 baseline).",
+        default=50,
+        help="Training epochs (50 reproduces task0 baseline).",
     )
     parser.add_argument(
         "--batch-size",
