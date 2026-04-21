@@ -8,6 +8,7 @@ import keras
 
 from data import SEQUENCE_LENGTH, VOCAB_SIZE, load_datasets
 from model import EMBED_DIM, LATENT_DIM, NUM_HEADS, build_transformer
+from plot import ConvergencePlotCallback
 from run_dir import (
     create_run_dir,
     write_config,
@@ -54,7 +55,10 @@ def run(args) -> keras.Model:
         train_ds,
         epochs=args.epochs,
         validation_data=val_ds,
-        callbacks=[keras.callbacks.CSVLogger(str(run_dir / "metrics.csv"))],
+        callbacks=[
+            keras.callbacks.CSVLogger(str(run_dir / "metrics.csv")),
+            ConvergencePlotCallback(run_dir),
+        ],
     )
     write_final_metrics(run_dir, history)
 
