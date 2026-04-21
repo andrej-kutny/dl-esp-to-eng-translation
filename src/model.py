@@ -142,17 +142,6 @@ class TransformerDecoder(layers.Layer):
         self.layernorm_2 = layers.LayerNormalization()
         self.layernorm_3 = layers.LayerNormalization()
 
-    def build(self, input_shape):
-        decoder_shape = input_shape[0]
-        encoder_shape = input_shape[1]
-        self.attention_1.build(decoder_shape, decoder_shape, decoder_shape)
-        self.attention_2.build(decoder_shape, encoder_shape, encoder_shape)
-        self.dense_proj.build(decoder_shape)
-        self.layernorm_1.build(decoder_shape)
-        self.layernorm_2.build(decoder_shape)
-        self.layernorm_3.build(decoder_shape)
-        super().build(input_shape)
-
     def call(self, inputs, mask=None):
         decoder_inputs = inputs[0]
         encoder_outputs = inputs[1]
@@ -170,24 +159,28 @@ class TransformerDecoder(layers.Layer):
             else:
                 decoder_padding_mask = mask
 
+        self_attn_mask = tf.cast(causal_mask, "int32")
+        if decoder_padding_mask is not None:
+            pad = tf.cast(decoder_padding_mask[:, None, :], dtype="int32")
+            self_attn_mask = tf.minimum(self_attn_mask, pad)
+
         attn_output_1 = self.attention_1(
             query=decoder_inputs,
             value=decoder_inputs,
             key=decoder_inputs,
-            attention_mask=causal_mask,
-            query_mask=decoder_padding_mask,
-            value_mask=decoder_padding_mask,
-            key_mask=decoder_padding_mask,
+            attention_mask=self_attn_mask,
         )
         out_1 = self.layernorm_1(decoder_inputs + attn_output_1)
+
+        cross_attn_mask = None
+        if encoder_padding_mask is not None:
+            cross_attn_mask = tf.cast(encoder_padding_mask[:, None, :], dtype="int32")
 
         attn_output_2 = self.attention_2(
             query=out_1,
             value=encoder_outputs,
             key=encoder_outputs,
-            query_mask=decoder_padding_mask,
-            value_mask=encoder_padding_mask,
-            key_mask=encoder_padding_mask,
+            attention_mask=cross_attn_mask,
         )
         out_2 = self.layernorm_2(out_1 + attn_output_2)
 
