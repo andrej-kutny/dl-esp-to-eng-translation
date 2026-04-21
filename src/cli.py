@@ -54,9 +54,14 @@ def main(argv: list[str] | None = None) -> None:
     if args.visualize and not args.sentence:
         raise SystemExit("--visualize requires --sentence")
 
+    from run_dir import create_run_dir
+
+    run_dir = create_run_dir()
+    print(f"Run directory: {run_dir}", flush=True)
+
     from train import run
 
-    run(args)
+    run(args, run_dir=run_dir)
 
 
 if __name__ == "__main__":

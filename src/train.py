@@ -20,11 +20,12 @@ from translate import sample_translations
 from visualize import plot_all_encoder_heads
 
 
-def run(args) -> keras.Model:
+def run(args, run_dir=None) -> keras.Model:
     set_global_seed(args.seed)
 
-    run_dir = create_run_dir()
-    print(f"Run directory: {run_dir}")
+    if run_dir is None:
+        run_dir = create_run_dir()
+        print(f"Run directory: {run_dir}")
 
     write_config(
         run_dir,
