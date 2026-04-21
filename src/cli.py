@@ -46,12 +46,6 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Spanish input sentence to visualize; required with --visualize.",
     )
-    parser.add_argument(
-        "--head",
-        type=int,
-        default=0,
-        help="Attention head index to plot.",
-    )
     return parser
 
 

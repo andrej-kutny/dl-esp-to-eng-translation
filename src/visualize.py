@@ -1,3 +1,4 @@
+import json
 import os
 
 os.environ.setdefault("KERAS_BACKEND", "tensorflow")
@@ -9,18 +10,13 @@ import matplotlib.pyplot as plt
 from keras import ops
 
 
-DEFAULT_OUT_DIR = Path(__file__).resolve().parent.parent / "docs" / "img"
-
-
-def _build_scores_model(transformer: keras.Model) -> keras.Model:
-    encoder_inputs = transformer.get_layer("encoder_pos_emb").input
-    if encoder_inputs is None:
-        encoder_inputs = transformer.input["encoder_inputs"]
+def _compute_encoder_scores(transformer: keras.Model, tokenized):
     encoder_pos_emb = transformer.get_layer("encoder_pos_emb")
     encoder_block = transformer.get_layer("encoder_block")
-    embedded = encoder_pos_emb(encoder_inputs)
-    _, scores = encoder_block(embedded, return_attention_scores=True)
-    return keras.Model(inputs=encoder_inputs, outputs=scores)
+    embedded = encoder_pos_emb(tokenized)
+    mask = encoder_pos_emb.compute_mask(tokenized)
+    _, scores = encoder_block(embedded, mask=mask, return_attention_scores=True)
+    return scores
 
 
 def _tokens_for(sentence: str, spa_vec) -> tuple[list[str], int]:
@@ -32,24 +28,7 @@ def _tokens_for(sentence: str, spa_vec) -> tuple[list[str], int]:
     return tokens, content_len
 
 
-def plot_encoder_self_attention(
-    sentence: str,
-    transformer: keras.Model,
-    spa_vec,
-    head: int = 0,
-    out_path: Path | None = None,
-) -> Path:
-    if out_path is None:
-        out_path = DEFAULT_OUT_DIR / f"attention_head{head}.png"
-    out_path = Path(out_path)
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-
-    scores_model = _build_scores_model(transformer)
-    tokenized = spa_vec([sentence])
-    scores = ops.convert_to_numpy(scores_model(tokenized))
-    head_scores = scores[0, head]
-
-    tokens, content_len = _tokens_for(sentence, spa_vec)
+def _plot_head(head_scores, tokens, content_len, head: int, out_path: Path) -> None:
     trimmed = head_scores[:content_len, :content_len]
     trimmed_tokens = tokens[:content_len]
 
@@ -66,4 +45,35 @@ def plot_encoder_self_attention(
     fig.tight_layout()
     fig.savefig(out_path, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    return out_path
+
+
+def plot_all_encoder_heads(
+    sentence: str,
+    transformer: keras.Model,
+    spa_vec,
+    out_dir: Path,
+) -> list[Path]:
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    tokenized = spa_vec([sentence])
+    scores = ops.convert_to_numpy(_compute_encoder_scores(transformer, tokenized))
+    num_heads = scores.shape[1]
+
+    tokens, content_len = _tokens_for(sentence, spa_vec)
+
+    meta = {
+        "sentence": sentence,
+        "tokens": tokens,
+        "content_length": int(content_len),
+        "num_heads": int(num_heads),
+        "scores_shape": list(scores.shape),
+    }
+    (out_dir / "attention_meta.json").write_text(json.dumps(meta, indent=2))
+
+    paths: list[Path] = []
+    for head in range(num_heads):
+        path = out_dir / f"attention_head{head}.png"
+        _plot_head(scores[0, head], tokens, content_len, head, path)
+        paths.append(path)
+    return paths
