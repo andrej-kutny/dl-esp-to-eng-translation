@@ -58,7 +58,11 @@ def run(args, run_dir=None) -> keras.Model:
         validation_data=val_ds,
         callbacks=[
             keras.callbacks.CSVLogger(str(run_dir / "metrics.csv")),
-            ConvergencePlotCallback(run_dir),
+            ConvergencePlotCallback(
+                run_dir,
+                sentence=args.sentence if args.visualize else None,
+                spa_vec=spa_vec if args.visualize else None,
+            ),
         ],
     )
     write_final_metrics(run_dir, history)

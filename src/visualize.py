@@ -52,6 +52,7 @@ def plot_all_encoder_heads(
     transformer: keras.Model,
     spa_vec,
     out_dir: Path,
+    filename_fmt: str = "attention_head{head}.png",
 ) -> list[Path]:
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -73,7 +74,7 @@ def plot_all_encoder_heads(
 
     paths: list[Path] = []
     for head in range(num_heads):
-        path = out_dir / f"attention_head{head}.png"
+        path = out_dir / filename_fmt.format(head=head)
         _plot_head(scores[0, head], tokens, content_len, head, path)
         paths.append(path)
     return paths

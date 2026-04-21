@@ -91,12 +91,16 @@ def plot_from_csv(metrics_csv: Path, out_dir: Path) -> None:
 
 class ConvergencePlotCallback(keras.callbacks.Callback):
     """After every epoch: refresh convergence_{accuracy,loss}.png and append
-    timing info to epoch_times.json in the run directory."""
+    timing info to epoch_times.json in the run directory. When a sentence +
+    vectorizer are provided, also snapshot encoder attention heatmaps on
+    every new best val_accuracy into attention/{epoch}_{val_acc:.6f}/."""
 
-    def __init__(self, run_dir: Path):
+    def __init__(self, run_dir: Path, sentence: str | None = None, spa_vec=None):
         super().__init__()
         self.run_dir = Path(run_dir)
         self.times_path = self.run_dir / "epoch_times.json"
+        self.sentence = sentence
+        self.spa_vec = spa_vec
         self._epochs: list[int] = []
         self._loss: list[float] = []
         self._acc: list[float] = []
@@ -104,6 +108,7 @@ class ConvergencePlotCallback(keras.callbacks.Callback):
         self._val_acc: list[float] = []
         self._epoch_start_iso: str | None = None
         self._epoch_start_mono: float | None = None
+        self._best_val_acc: float = float("-inf")
         self.times_path.write_text("{}")
 
     def on_epoch_begin(self, epoch, logs=None):
@@ -114,14 +119,16 @@ class ConvergencePlotCallback(keras.callbacks.Callback):
         logs = logs or {}
         elapsed = time.monotonic() - (self._epoch_start_mono or time.monotonic())
 
-        self._epochs.append(epoch + 1)
+        ep = epoch + 1
+        val_acc = float(logs.get("val_accuracy", float("nan")))
+        self._epochs.append(ep)
         self._loss.append(float(logs.get("loss", float("nan"))))
         self._acc.append(float(logs.get("accuracy", float("nan"))))
         self._val_loss.append(float(logs.get("val_loss", float("nan"))))
-        self._val_acc.append(float(logs.get("val_accuracy", float("nan"))))
+        self._val_acc.append(val_acc)
 
         times = json.loads(self.times_path.read_text() or "{}")
-        times[str(epoch + 1)] = {
+        times[str(ep)] = {
             "start": self._epoch_start_iso,
             "end": datetime.now().isoformat(),
             "elapsed_seconds": round(elapsed, 3),
@@ -136,3 +143,21 @@ class ConvergencePlotCallback(keras.callbacks.Callback):
             self._epochs, self._loss, self._val_loss,
             self.run_dir / "convergence_loss.png",
         )
+
+        if (
+            self.sentence
+            and self.spa_vec is not None
+            and val_acc == val_acc  # skip NaN
+            and val_acc > self._best_val_acc
+        ):
+            self._best_val_acc = val_acc
+            from visualize import plot_all_encoder_heads
+
+            out_dir = self.run_dir / "attention" / f"{ep}_{val_acc:.6f}"
+            plot_all_encoder_heads(
+                sentence=self.sentence,
+                transformer=self.model,
+                spa_vec=self.spa_vec,
+                out_dir=out_dir,
+                filename_fmt="head_{head}.png",
+            )
