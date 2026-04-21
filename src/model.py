@@ -3,7 +3,8 @@ import os
 os.environ.setdefault("KERAS_BACKEND", "tensorflow")
 
 import keras
-from keras import layers, ops
+import tensorflow as tf
+from keras import layers
 
 from attention import MultiHeadAttention as CustomMultiHeadAttention
 from data import SEQUENCE_LENGTH, VOCAB_SIZE
@@ -28,14 +29,14 @@ class PositionalEmbedding(layers.Layer):
         self.embed_dim = embed_dim
 
     def call(self, inputs):
-        length = ops.shape(inputs)[-1]
-        positions = ops.arange(0, length, 1)
+        length = tf.shape(inputs)[-1]
+        positions = tf.range(0, length, 1)
         embedded_tokens = self.token_embeddings(inputs)
         embedded_positions = self.position_embeddings(positions)
         return embedded_tokens + embedded_positions
 
     def compute_mask(self, inputs, mask=None):
-        return ops.not_equal(inputs, 0)
+        return tf.not_equal(inputs, 0)
 
     def get_config(self):
         config = super().get_config()
@@ -78,7 +79,7 @@ class TransformerEncoder(layers.Layer):
 
     def call(self, inputs, mask=None, return_attention_scores=False):
         if mask is not None:
-            padding_mask = ops.cast(mask[:, None, :], dtype="int32")
+            padding_mask = tf.cast(mask[:, None, :], dtype="int32")
         else:
             padding_mask = None
 
@@ -194,8 +195,6 @@ class TransformerDecoder(layers.Layer):
         return self.layernorm_3(out_2 + proj_output)
 
     def get_causal_attention_mask(self, inputs):
-        import tensorflow as tf
-
         input_shape = tf.shape(inputs)
         batch_size = input_shape[0]
         seq_len = input_shape[1]
