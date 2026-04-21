@@ -44,13 +44,13 @@ def _plot_accuracy(epochs, acc, val_acc, out_path: Path):
     if checkpoints:
         xs = [e for e, _ in checkpoints]
         ys = [v for _, v in checkpoints]
-        ax.plot(xs, ys, color="tab:green", linewidth=0.8, linestyle="--",
-                label="best-so-far")
+        ax.plot(xs, ys, color="tab:orange", linewidth=0.8, linestyle="--",
+                label="val best")
         for ep, v in checkpoints:
-            ax.plot(ep, v, "o", color="tab:green", markersize=5)
+            ax.plot(ep, v, "o", color="tab:orange", markersize=5)
             ax.annotate(f"{ep}: {v:.4f}", xy=(ep, v), xytext=(0, 6),
                         textcoords="offset points", rotation=45,
-                        fontsize=7, color="tab:green")
+                        fontsize=7, color="tab:orange")
 
     ax.set_xlabel("epoch")
     ax.set_ylabel("accuracy")
