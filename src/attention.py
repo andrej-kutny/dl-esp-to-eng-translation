@@ -2,7 +2,7 @@ import os
 
 os.environ.setdefault("KERAS_BACKEND", "tensorflow")
 
-import keras.ops as ops
+import tensorflow as tf
 from keras import layers
 
 
@@ -21,18 +21,18 @@ class MultiHeadAttention(layers.Layer):
         self.output_dense = layers.Dense(key_dim)
 
     def _split_heads(self, inputs):
-        batch_size = ops.shape(inputs)[0]
-        seq_len = ops.shape(inputs)[1]
-        inputs = ops.reshape(
+        batch_size = tf.shape(inputs)[0]
+        seq_len = tf.shape(inputs)[1]
+        inputs = tf.reshape(
             inputs, (batch_size, seq_len, self.num_heads, self.projection_dim)
         )
-        return ops.transpose(inputs, (0, 2, 1, 3))
+        return tf.transpose(inputs, (0, 2, 1, 3))
 
     def _combine_heads(self, inputs):
-        batch_size = ops.shape(inputs)[0]
-        seq_len = ops.shape(inputs)[2]
-        inputs = ops.transpose(inputs, (0, 2, 1, 3))
-        return ops.reshape(inputs, (batch_size, seq_len, self.key_dim))
+        batch_size = tf.shape(inputs)[0]
+        seq_len = tf.shape(inputs)[2]
+        inputs = tf.transpose(inputs, (0, 2, 1, 3))
+        return tf.reshape(inputs, (batch_size, seq_len, self.key_dim))
 
     def call(
         self,
@@ -46,21 +46,21 @@ class MultiHeadAttention(layers.Layer):
         key = self._split_heads(self.key_dense(key))
         value = self._split_heads(self.value_dense(value))
 
-        scores = ops.matmul(query, ops.transpose(key, (0, 1, 3, 2)))
-        scores = scores / ops.sqrt(ops.cast(self.projection_dim, scores.dtype))
+        scores = tf.matmul(query, tf.transpose(key, (0, 1, 3, 2)))
+        scores = scores / tf.sqrt(tf.cast(self.projection_dim, scores.dtype))
 
         if attention_mask is not None:
-            mask = ops.cast(attention_mask, "bool")
+            mask = tf.cast(attention_mask, "bool")
             if len(mask.shape) == 2:
-                mask = ops.expand_dims(mask, axis=1)
-                mask = ops.expand_dims(mask, axis=1)
+                mask = tf.expand_dims(mask, axis=1)
+                mask = tf.expand_dims(mask, axis=1)
             elif len(mask.shape) == 3:
-                mask = ops.expand_dims(mask, axis=1)
-            large_negative = ops.cast(-1e9, scores.dtype)
-            scores = ops.where(mask, scores, large_negative)
+                mask = tf.expand_dims(mask, axis=1)
+            large_negative = tf.cast(-1e9, scores.dtype)
+            scores = tf.where(mask, scores, large_negative)
 
-        attention_weights = ops.softmax(scores, axis=-1)
-        attention_output = ops.matmul(attention_weights, value)
+        attention_weights = tf.nn.softmax(scores, axis=-1)
+        attention_output = tf.matmul(attention_weights, value)
         attention_output = self._combine_heads(attention_output)
         output = self.output_dense(attention_output)
         if return_attention_scores:

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import keras
 import matplotlib.pyplot as plt
-from keras import ops
+import numpy as np
 
 
 def _compute_encoder_scores(transformer: keras.Model, tokenized):
@@ -20,7 +20,7 @@ def _compute_encoder_scores(transformer: keras.Model, tokenized):
 
 
 def _tokens_for(sentence: str, spa_vec) -> tuple[list[str], int]:
-    token_ids = ops.convert_to_numpy(spa_vec([sentence]))[0]
+    token_ids = np.asarray(spa_vec([sentence]))[0]
     vocab = spa_vec.get_vocabulary()
     tokens = [vocab[i] if i < len(vocab) else "" for i in token_ids]
     nonzero = [idx for idx, i in enumerate(token_ids) if i != 0]
@@ -57,7 +57,7 @@ def plot_all_encoder_heads(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     tokenized = spa_vec([sentence])
-    scores = ops.convert_to_numpy(_compute_encoder_scores(transformer, tokenized))
+    scores = np.asarray(_compute_encoder_scores(transformer, tokenized))
     num_heads = scores.shape[1]
 
     tokens, content_len = _tokens_for(sentence, spa_vec)

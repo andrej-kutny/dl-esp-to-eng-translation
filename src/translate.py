@@ -4,7 +4,8 @@ os.environ.setdefault("KERAS_BACKEND", "tensorflow")
 
 import random
 
-from keras import ops
+import numpy as np
+import tensorflow as tf
 
 
 MAX_DECODED_SENTENCE_LENGTH = 20
@@ -25,9 +26,7 @@ def make_decoder(transformer, spa_vec, eng_vec):
                     "decoder_inputs": tokenized_target,
                 }
             )
-            sampled_token_index = ops.convert_to_numpy(
-                ops.argmax(predictions[0, i, :])
-            ).item(0)
+            sampled_token_index = int(np.argmax(predictions[0, i, :]))
             sampled_token = eng_index_lookup[sampled_token_index]
             decoded_sentence += " " + sampled_token
             if sampled_token == "[end]":
